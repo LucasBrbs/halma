@@ -109,40 +109,32 @@ class NetworkedHalmaGame(HalmaGame):
         if not self.eh_minha_vez:
             messagebox.showinfo("Turno", "Aguarde o turno do oponente!")
             return
-
         linha = event.y // TAMANHO_CASA
         coluna = event.x // TAMANHO_CASA
         if linha < 0 or linha >= TAMANHO_TABULEIRO or coluna < 0 or coluna >= TAMANHO_TABULEIRO:
             return
-
         if self.selecionado:
             origem = self.selecionado
             destino = (linha, coluna)
-
             if self.tabuleiro[origem[0]][origem[1]] != self.jogador:
                 self.selecionado = None
                 self.desenhar_tabuleiro()
                 messagebox.showinfo("Movimento inválido", "Selecione uma peça da sua cor!")
                 return
-
             if self.movimento_valido(origem, destino):
                 self.mover_peca(origem, destino)
                 self.enviar_jogada_rede(origem, destino)
-
-                # 🔹 Depois de jogar, sempre passa a vez
+                # Depois de jogar, sempre passa a vez
                 self.eh_minha_vez = False
                 self.atualizar_titulo_turno()
                 self.verificar_vitoria_derrota()
             else:
                 messagebox.showinfo("Movimento inválido", "Movimento não permitido!")
-
             self.selecionado = None
             self.desenhar_tabuleiro()
-
         elif self.tabuleiro[linha][coluna] == self.jogador:
             self.selecionado = (linha, coluna)
             self.desenhar_tabuleiro()
-
         elif self.tabuleiro[linha][coluna]:
             messagebox.showinfo("Movimento inválido", "Selecione apenas suas peças!")
 
@@ -152,17 +144,15 @@ class NetworkedHalmaGame(HalmaGame):
         self.conexao.sendall(tamanho + dados)
 
     def ouvir_rede(self):
+        print("[DEBUG] Thread de rede iniciada")
         while True:
             try:
-                # 🔹 Primeiro lê o cabeçalho (4 bytes = tamanho da mensagem)
                 cabecalho = self.conexao.recv(4)
                 if not cabecalho:
                     print("[DEBUG] Conexão fechada pelo oponente.")
                     break
                 tamanho = int.from_bytes(cabecalho, "big")
                 print(f"[DEBUG] Cabeçalho recebido: tamanho esperado = {tamanho} bytes")
-
-                # 🔹 Agora lê a mensagem completa
                 dados = b""
                 while len(dados) < tamanho:
                     pacote = self.conexao.recv(tamanho - len(dados))
@@ -171,37 +161,26 @@ class NetworkedHalmaGame(HalmaGame):
                         break
                     dados += pacote
                     print(f"[DEBUG] Recebendo pacote... {len(dados)}/{tamanho} bytes")
-
                 if len(dados) < tamanho:
                     print("[DEBUG] Mensagem incompleta recebida, abortando jogada.")
                     continue
-
-                # 🔹 Desserializa a jogada
                 origem, destino = pickle.loads(dados)
                 print(f"[DEBUG] Jogada recebida: origem={origem}, destino={destino}, jogador local={self.jogador}")
-
-                # 🔹 Aplica a jogada recebida no tabuleiro
                 self.aplicar_jogada_remota(origem, destino)
-
-                # 🔹 Agora passa a vez para mim
+                # Agora passa a vez para mim
                 print(f"[DEBUG] eh_minha_vez antes = {self.eh_minha_vez}")
                 self.eh_minha_vez = True
                 self.atualizar_titulo_turno()
                 print(f"[DEBUG] eh_minha_vez depois = {self.eh_minha_vez}")
-
-                # 🔹 Verifica condição de vitória/derrota
                 self.verificar_vitoria_derrota()
-
             except Exception as e:
                 print(f"[ERRO na thread de rede]: {e}")
                 break
 
-
-
     def aplicar_jogada_remota(self, origem, destino):
         self.mover_peca(origem, destino)
         self.desenhar_tabuleiro()
-        # ❌ Não mexe em turno aqui
+        # Não mexe em turno aqui
 
     def verificar_vitoria_derrota(self):
         # Verifica se todas as peças do jogador estão na base adversária
@@ -218,10 +197,9 @@ class NetworkedHalmaGame(HalmaGame):
                         if self.tabuleiro[i][j] != 'B':
                             return False
                 return True
-
         if todas_na_base(self.jogador):
             messagebox.showinfo("Vitória!", "Parabéns, você venceu!")
-            self.master.master.destroy()  # 🔹 Fecha janela
+            self.master.master.destroy()  # Fecha janela
         elif todas_na_base('A' if self.jogador == 'B' else 'B'):
             messagebox.showinfo("Derrota", "O oponente venceu!")
-            self.master.master.destroy()  # 🔹 Fecha janela
+            self.master.master.destroy()  # Fecha janela
