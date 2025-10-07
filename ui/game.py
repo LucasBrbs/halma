@@ -150,8 +150,8 @@ class NetworkedHalmaGame(HalmaGame):
                     break
                 origem, destino = pickle.loads(dados)
                 self.aplicar_jogada_remota(origem, destino)
-                # Alterna turno para o oponente
-                self.turno = 'A' if self.jogador == 'B' else 'B'
+                # Alterna turno para o jogador local
+                self.turno = self.jogador
                 self.atualizar_titulo_turno()
             except Exception:
                 break
