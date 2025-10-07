@@ -5,7 +5,7 @@ import pickle
 
 TAMANHO_TABULEIRO = 16
 TAMANHO_CASA = 30
-CORES_JOGADORES = {'A': 'blue', 'B': 'red'}
+CORES_JOGADORES = {'A': 'black', 'B': 'white'}
 
 def criar_tabuleiro():
     tabuleiro = [[None for _ in range(TAMANHO_TABULEIRO)] for _ in range(TAMANHO_TABULEIRO)]
@@ -94,18 +94,22 @@ class NetworkedHalmaGame(HalmaGame):
         print(f"[DEBUG] conexao = {conexao}")
         print(f"[DEBUG] is_host = {is_host}")
         super().__init__(master, self.enviar_jogada_rede)
+        self.desistido = False
         self.conexao = conexao
         self.is_host = is_host
         self.jogador = 'A' if is_host else 'B'
-        self.eh_minha_vez = is_host  # Host (A / Azul) sempre começa
+        self.eh_minha_vez = is_host
         self.atualizar_titulo_turno()
         print("[DEBUG] Antes de iniciar thread ouvir_rede")
         threading.Thread(target=self.ouvir_rede, daemon=True).start()
         print("[DEBUG] Depois de iniciar thread ouvir_rede")
+        # Botão de desistência
+        btn_desistir = tk.Button(self.master, text="Desistir", command=self.desistir)
+        btn_desistir.pack(side=tk.BOTTOM, pady=10)
 
     def atualizar_titulo_turno(self):
         if self.eh_minha_vez:
-            self.master.master.title(f"Halma - Seu turno ({'Azul' if self.jogador == 'A' else 'Vermelho'})")
+            self.master.master.title(f"Halma - Seu turno ({'Preto' if self.jogador == 'A' else 'Branco'})")
         else:
             self.master.master.title("Halma - Turno do oponente")
 
@@ -153,43 +157,47 @@ class NetworkedHalmaGame(HalmaGame):
         except Exception as e:
             print(f"[ERRO ao enviar jogada]: {e}")
 
+    def desistir(self):
+        if not self.desistido:
+            self.desistido = True
+            dados = pickle.dumps({"desistir": True})
+            tamanho = len(dados).to_bytes(4, "big")
+            self.conexao.sendall(tamanho + dados)
+            messagebox.showinfo("Desistência", "Você desistiu do jogo.")
+            self.master.master.destroy()
+
     def ouvir_rede(self):
         print("[DEBUG] Thread de rede iniciada")
         while True:
             try:
-                print("[DEBUG] Antes do recv(4)")
                 cabecalho = self.conexao.recv(4)
-                print(f"[DEBUG] Depois do recv(4), cabecalho={cabecalho}")
                 if not cabecalho:
                     print("[DEBUG] Conexão fechada pelo oponente.")
                     break
                 tamanho = int.from_bytes(cabecalho, "big")
-                print(f"[DEBUG] Cabeçalho recebido: tamanho esperado = {tamanho} bytes")
                 dados = b""
                 while len(dados) < tamanho:
                     pacote = self.conexao.recv(tamanho - len(dados))
-                    print(f"[DEBUG] Pacote recebido: {pacote}")
                     if not pacote:
                         print("[DEBUG] Conexão interrompida no meio da mensagem.")
                         break
                     dados += pacote
-                    print(f"[DEBUG] Recebendo pacote... {len(dados)}/{tamanho} bytes")
                 if len(dados) < tamanho:
                     print("[DEBUG] Mensagem incompleta recebida, abortando jogada.")
                     continue
-                print(f"[DEBUG] Dados recebidos: {dados}")
                 recebido = pickle.loads(dados)
                 if isinstance(recebido, dict) and "chat" in recebido:
                     if hasattr(self, "adicionar_mensagem_chat"):
                         self.adicionar_mensagem_chat("Oponente: " + recebido["chat"])
+                elif isinstance(recebido, dict) and "desistir" in recebido:
+                    messagebox.showinfo("Desistência", "O oponente desistiu do jogo.")
+                    self.master.master.destroy()
+                    break
                 elif isinstance(recebido, tuple):
                     origem, destino = recebido
-                    print(f"[DEBUG] Jogada recebida: origem={origem}, destino={destino}, jogador local={self.jogador}")
                     self.aplicar_jogada_remota(origem, destino)
-                    print(f"[DEBUG] eh_minha_vez antes = {self.eh_minha_vez}")
                     self.eh_minha_vez = True
                     self.atualizar_titulo_turno()
-                    print(f"[DEBUG] eh_minha_vez depois = {self.eh_minha_vez}")
                     self.verificar_vitoria_derrota()
             except Exception as e:
                 import traceback
