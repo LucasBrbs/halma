@@ -1,6 +1,6 @@
-# 🎮 Seega Multiplayer com Sockets (Python + Tkinter)
+# 🎮 Halma Multiplayer com Sockets (Python + Tkinter)
 
-Projeto individual da disciplina de **Programação Paralela e Distribuída (IFCE, 2025.1)** com o objetivo de implementar o jogo de tabuleiro **Seega**, utilizando **sockets TCP em Python** para comunicação em rede e **Tkinter** para a interface gráfica.
+Projeto individual da disciplina de **Programação Paralela e Distribuída (IFCE, 2025.1)** com o objetivo de implementar o jogo de tabuleiro **Halma**, utilizando **sockets TCP em Python** para comunicação em rede e **Tkinter** para a interface gráfica.
 
 ---
 
@@ -8,7 +8,7 @@ Projeto individual da disciplina de **Programação Paralela e Distribuída (IFC
 
 - [📷 Visão Geral](#-visão-geral)
 - [🚀 Execução](#-execução)
-- [🧠 Regras do Jogo Seega](#-regras-do-jogo-seega)
+- [🧠 Regras do Jogo Halma](#-regras-do-jogo-halma)
 - [🔧 Tecnologias Utilizadas](#-tecnologias-utilizadas)
 - [📡 Comunicação em Rede](#-comunicação-em-rede)
 - [🗂 Estrutura de Pastas](#-estrutura-de-pastas)
@@ -20,15 +20,15 @@ Projeto individual da disciplina de **Programação Paralela e Distribuída (IFC
 
 ## 📷 Visão Geral
 
-<img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Seega_board.svg" width="200" align="right" />
+<img src="https://upload.wikimedia.org/wikipedia/commons/2/2e/Halma_Board.svg" width="200" align="right" />
 
-**Seega** é um antigo jogo de origem africana baseado em estratégia, bloqueio e captura. Dois jogadores disputam em um tabuleiro 5x5 tentando eliminar ou imobilizar as peças adversárias.
+**Halma** é um clássico jogo de tabuleiro de estratégia para dois jogadores. O objetivo é mover todas as suas peças do canto inicial para o canto oposto do tabuleiro, utilizando movimentos simples ou pulando sobre outras peças (sem capturá-las).
 
 Este projeto implementa:
 
 - Jogo **em tempo real**, multiplayer peer-to-peer (host + cliente)
 - Interface gráfica amigável com **área de jogo**, **chat** e **logs**
-- **Controle de turnos**, fases e regras completas
+- **Controle de turnos** e regras básicas do Halma
 - Comunicação 100% via **sockets TCP**
 
 ---
@@ -44,35 +44,32 @@ Este projeto implementa:
 
 ```bash
 # Clone ou extraia os arquivos
-cd seega
+cd halma
 
 # Execute o arquivo principal
-python main.py
+python3 main.py
 ```
 
 ### Como jogar
 
-1. **Jogador 1 (host)**: Clique em **Hospedar** e informe a porta (ex: 5000).
-2. **Jogador 2 (convidado)**: Clique em **Entrar**, insira o IP do host e a mesma porta.
+1. **Jogador 1 (host)**: Inicie o servidor e informe a porta (ex: 5000).
+2. **Jogador 2 (convidado)**: Conecte usando o IP do host e a mesma porta.
 3. Após conexão, a interface do jogo será carregada para ambos.
-4. A partida segue as regras do Seega (ver abaixo).
+4. A partida segue as regras do Halma (ver abaixo).
 
 ---
 
-## 🧠 Regras do Jogo Seega
+## 🧠 Regras do Jogo Halma
 
-1. **Fase de Colocação**:
-   - Cada jogador coloca 12 peças alternadamente.
-   - A **casa central (2,2)** é bloqueada durante esta fase.
+1. **Objetivo**:
+   - Mover todas as suas peças do seu campo inicial para o campo oposto do tabuleiro.
 
-2. **Fase de Movimentação**:
-   - Os jogadores movem uma peça por vez para uma casa **vazia e adjacente (ortogonal)**.
-   - Se uma peça inimiga ficar **entre duas suas**, ela é **capturada**.
+2. **Movimentação**:
+   - As peças podem se mover para casas adjacentes vazias (horizontal, vertical ou diagonal).
+   - É permitido pular sobre peças (próprias ou do adversário) para casas vazias, em linha reta, podendo realizar múltiplos pulos em sequência.
 
 3. **Condições de Vitória**:
-   - Um jogador **vence** quando o oponente:
-     - Não tem mais peças, ou
-     - Desiste.
+   - Vence quem posicionar todas as suas peças no campo oposto primeiro.
 
 ---
 
@@ -94,7 +91,7 @@ A arquitetura segue o padrão **cliente-servidor**, usando sockets TCP:
 - O **convidado** (cliente) se conecta usando IP + porta.
 - A comunicação é **bidirecional**:
   - Mensagens de texto (chat)
-  - Comandos de jogo (movimentações, capturas, desistência)
+  - Comandos de jogo (movimentações)
 - As mensagens são **serializadas em JSON**, garantindo portabilidade e clareza.
 
 ---
@@ -102,11 +99,11 @@ A arquitetura segue o padrão **cliente-servidor**, usando sockets TCP:
 ## 🗂 Estrutura de Pastas
 
 ```
-seega/
+halma/
 ├── main.py               # Ponto de entrada
 ├── ui/
-│   ├── lobby.py          # Tela inicial (Hospedar/Entrar)
-│   └── game_ui.py        # Interface principal do jogo
+│   ├── lobby.py          # Tela inicial (Lobby, Chat)
+│   └── game.py           # Interface principal do jogo Halma
 └── network/
     ├── server.py         # Inicializa o servidor TCP
     └── client.py         # Conecta a um servidor existente
@@ -117,13 +114,10 @@ seega/
 ## ⚙️ Funcionalidades Implementadas
 
 ✅ Hospedar ou entrar em partidas  
-✅ Interface gráfica com **tabuleiro 5x5**, chat e logs  
-✅ Controle de turno e **troca automática**  
-✅ Fase de colocação com **bloqueio da casa central**  
-✅ Fase de movimentação com **validação ortogonal**  
-✅ Regras de **captura ortogonal**  
-✅ Indicação de **vitória ou derrota**  
-✅ Botão de **desistência**  
+✅ Interface gráfica com **tabuleiro 16x16**, chat e logs  
+✅ Controle de turno  
+✅ Movimentação e pulos válidos das peças  
+✅ Indicação de vitória  
 ✅ Logs da partida e mensagens em tempo real
 
 ---
@@ -132,14 +126,14 @@ seega/
 
 - A interface foi feita com foco em **simplicidade e clareza**, sem uso de bibliotecas externas.
 - A escuta de dados da conexão ocorre em **thread separada**, evitando travamento da interface.
-- Todos os comandos de jogo (ex: movimentar, capturar) são enviados como **eventos JSON**.
+- Todos os comandos de jogo (ex: movimentar) são enviados como **eventos JSON**.
 - A interface é adaptável para futuras funcionalidades, como placar, cronômetro ou bot.
 
 ---
 
 ## 📚 Curiosidades e Justificativas
 
-- O **Seega** foi escolhido por sua simplicidade e **potencial estratégico**, o que permite testar comunicação P2P com uma mecânica envolvente.
+- O **Halma** foi escolhido por ser um jogo clássico de estratégia, permitindo testar comunicação P2P com uma mecânica envolvente.
 - A interface com Tkinter é leve, nativa e funcional mesmo sem bibliotecas externas.
 - A arquitetura do projeto permite futuras melhorias como:
   - Suporte a IA / bot
@@ -151,11 +145,10 @@ seega/
 
 ## 👤 Autor
 
-Desenvolvido por **Anthony Davi**  
+Desenvolvido por **Lucas Barbosa de Oliveira**  
 Aluno do curso de **Engenharia de Computação - IFCE**  
-Disciplina: Programação Paralela e Distribuída (2025.1)  
+Disciplina: Programação Paralela e Distribuída (2025.2)  
 Professor: *Cidcley T. de Souza*  
-Contato: [anthony.davi.sousa08@aluno.ifce.edu.br]
+Contato: [lucasbarbosa2807@gmail.com]
 
 ---
-
