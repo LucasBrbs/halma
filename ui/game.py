@@ -125,8 +125,10 @@ class NetworkedHalmaGame(HalmaGame):
             if self.movimento_valido(origem, destino):
                 self.mover_peca(origem, destino)
                 self.enviar_jogada_rede(origem, destino)
-                # Não alterna turno aqui!
+                # Alterna turno para o oponente após jogar
+                self.turno = 'A' if self.jogador == 'B' else 'B'
                 self.atualizar_titulo_turno()
+                self.verificar_vitoria_derrota()
             else:
                 messagebox.showinfo("Movimento inválido", "Movimento não permitido!")
             self.selecionado = None
@@ -150,8 +152,7 @@ class NetworkedHalmaGame(HalmaGame):
                     break
                 origem, destino = pickle.loads(dados)
                 self.aplicar_jogada_remota(origem, destino)
-                # Alterna turno para o oponente
-                self.turno = 'A' if self.jogador == 'B' else 'B'
+                # Não alterna turno aqui!
                 self.atualizar_titulo_turno()
                 self.verificar_vitoria_derrota()
             except Exception:
