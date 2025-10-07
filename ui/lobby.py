@@ -71,14 +71,24 @@ def iniciar_lobby():
 
     def hospedar():
         porta = int(porta_entry.get())
-        servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        servidor.bind(('', porta))
-        servidor.listen(1)
-        root.destroy()
-        print(f"[Servidor] Aguardando conexão na porta {porta}...")
-        conexao, endereco = servidor.accept()
-        print(f"[Servidor] Conectado com {endereco}")
-        iniciar_jogo(conexao, True)
+        escolha_jogador = tk.Toplevel()
+        escolha_jogador.title("Escolha quem começa")
+        var = tk.StringVar(value="A")
+        tk.Label(escolha_jogador, text="Quem começa?").pack()
+        tk.Radiobutton(escolha_jogador, text="Servidor (Preto)", variable=var, value="A").pack()
+        tk.Radiobutton(escolha_jogador, text="Cliente (Branco)", variable=var, value="B").pack()
+        def iniciar_servidor_com_escolha():
+            escolha_jogador.destroy()
+            servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            servidor.bind(('', porta))
+            servidor.listen(1)
+            root.destroy()
+            print(f"[Servidor] Aguardando conexão na porta {porta}...")
+            conexao, endereco = servidor.accept()
+            print(f"[Servidor] Conectado com {endereco}")
+            is_host = (var.get() == "A")
+            iniciar_jogo(conexao, is_host)
+        tk.Button(escolha_jogador, text="Iniciar", command=iniciar_servidor_com_escolha).pack()
 
     def entrar():
         ip = ip_entry.get()
