@@ -87,35 +87,24 @@ class HalmaGame(tk.Frame):
         self.tabuleiro[di][dj] = self.tabuleiro[oi][oj]
         self.tabuleiro[oi][oj] = None
 
-class NetworkedHalmaGame(tk.Frame):
+class NetworkedHalmaGame(HalmaGame):
     def __init__(self, master, conexao, is_host):
-        super().__init__(master)
-        self.tabuleiro = criar_tabuleiro()
+        super().__init__(master, self.enviar_jogada_rede)
         self.conexao = conexao
         self.is_host = is_host
-        self.canvas = tk.Canvas(self, width=TAMANHO_TABULEIRO*TAMANHO_CASA, height=TAMANHO_TABULEIRO*TAMANHO_CASA)
-        self.canvas.pack()
-        self.selecionado = None
-        self.canvas.bind("<Button-1>", self.on_click)
-        self.desenhar_tabuleiro()
+        self.turno = 'A' if is_host else 'B'
+        self.jogador = 'A' if is_host else 'B'
+        self.atualizar_titulo_turno()
         threading.Thread(target=self.ouvir_rede, daemon=True).start()
 
-    def desenhar_tabuleiro(self):
-        self.canvas.delete("all")
-        for i in range(TAMANHO_TABULEIRO):
-            for j in range(TAMANHO_TABULEIRO):
-                x0 = j * TAMANHO_CASA
-                y0 = i * TAMANHO_CASA
-                x1 = x0 + TAMANHO_CASA
-                y1 = y0 + TAMANHO_CASA
-                cor_casa = "yellow" if self.selecionado == (i, j) else "white"
-                self.canvas.create_rectangle(x0, y0, x1, y1, fill=cor_casa, outline="gray")
-                peca = self.tabuleiro[i][j]
-                if peca:
-                    cor = CORES_JOGADORES.get(peca, "black")
-                    self.canvas.create_oval(x0+5, y0+5, x1-5, y1-5, fill=cor)
+    def atualizar_titulo_turno(self):
+        jogador_nome = 'Azul' if self.turno == 'A' else 'Vermelho'
+        self.master.master.title(f"Halma - Vez de {jogador_nome}")
 
     def on_click(self, event):
+        if self.turno != self.jogador:
+            tk.messagebox.showinfo("Turno", "Aguarde sua vez!")
+            return
         linha = event.y // TAMANHO_CASA
         coluna = event.x // TAMANHO_CASA
         if linha < 0 or linha >= TAMANHO_TABULEIRO or coluna < 0 or coluna >= TAMANHO_TABULEIRO:
@@ -123,14 +112,25 @@ class NetworkedHalmaGame(tk.Frame):
         if self.selecionado:
             origem = self.selecionado
             destino = (linha, coluna)
+            if self.tabuleiro[origem[0]][origem[1]] != self.jogador:
+                self.selecionado = None
+                self.desenhar_tabuleiro()
+                tk.messagebox.showinfo("Movimento inválido", "Selecione uma peça da sua cor!")
+                return
             if self.movimento_valido(origem, destino):
                 self.mover_peca(origem, destino)
                 self.enviar_jogada_rede(origem, destino)
+                self.turno = 'B' if self.turno == 'A' else 'A'
+                self.atualizar_titulo_turno()
+            else:
+                tk.messagebox.showinfo("Movimento inválido", "Movimento não permitido!")
             self.selecionado = None
             self.desenhar_tabuleiro()
-        elif self.tabuleiro[linha][coluna]:
+        elif self.tabuleiro[linha][coluna] == self.jogador:
             self.selecionado = (linha, coluna)
             self.desenhar_tabuleiro()
+        elif self.tabuleiro[linha][coluna]:
+            tk.messagebox.showinfo("Movimento inválido", "Selecione apenas suas peças!")
 
     def enviar_jogada_rede(self, origem, destino):
         dados = pickle.dumps((origem, destino))
@@ -144,6 +144,8 @@ class NetworkedHalmaGame(tk.Frame):
                     break
                 origem, destino = pickle.loads(dados)
                 self.aplicar_jogada_remota(origem, destino)
+                self.turno = 'B' if self.turno == 'A' else 'A'
+                self.atualizar_titulo_turno()
             except Exception:
                 break
 
