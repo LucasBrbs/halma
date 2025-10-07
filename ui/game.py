@@ -1,4 +1,6 @@
 import tkinter as tk
+import threading
+import pickle
 
 TAMANHO_TABULEIRO = 16
 TAMANHO_CASA = 30
@@ -84,6 +86,66 @@ class HalmaGame(tk.Frame):
         di, dj = destino
         self.tabuleiro[di][dj] = self.tabuleiro[oi][oj]
         self.tabuleiro[oi][oj] = None
+
+class NetworkedHalmaGame(tk.Frame):
+    def __init__(self, master, conexao, is_host):
+        super().__init__(master)
+        self.tabuleiro = criar_tabuleiro()
+        self.conexao = conexao
+        self.is_host = is_host
+        self.canvas = tk.Canvas(self, width=TAMANHO_TABULEIRO*TAMANHO_CASA, height=TAMANHO_TABULEIRO*TAMANHO_CASA)
+        self.canvas.pack()
+        self.selecionado = None
+        self.canvas.bind("<Button-1>", self.on_click)
+        self.desenhar_tabuleiro()
+        threading.Thread(target=self.ouvir_rede, daemon=True).start()
+
+    def desenhar_tabuleiro(self):
+        self.canvas.delete("all")
+        for i in range(TAMANHO_TABULEIRO):
+            for j in range(TAMANHO_TABULEIRO):
+                x0 = j * TAMANHO_CASA
+                y0 = i * TAMANHO_CASA
+                x1 = x0 + TAMANHO_CASA
+                y1 = y0 + TAMANHO_CASA
+                cor_casa = "yellow" if self.selecionado == (i, j) else "white"
+                self.canvas.create_rectangle(x0, y0, x1, y1, fill=cor_casa, outline="gray")
+                peca = self.tabuleiro[i][j]
+                if peca:
+                    cor = CORES_JOGADORES.get(peca, "black")
+                    self.canvas.create_oval(x0+5, y0+5, x1-5, y1-5, fill=cor)
+
+    def on_click(self, event):
+        linha = event.y // TAMANHO_CASA
+        coluna = event.x // TAMANHO_CASA
+        if linha < 0 or linha >= TAMANHO_TABULEIRO or coluna < 0 or coluna >= TAMANHO_TABULEIRO:
+            return
+        if self.selecionado:
+            origem = self.selecionado
+            destino = (linha, coluna)
+            if self.movimento_valido(origem, destino):
+                self.mover_peca(origem, destino)
+                self.enviar_jogada_rede(origem, destino)
+            self.selecionado = None
+            self.desenhar_tabuleiro()
+        elif self.tabuleiro[linha][coluna]:
+            self.selecionado = (linha, coluna)
+            self.desenhar_tabuleiro()
+
+    def enviar_jogada_rede(self, origem, destino):
+        dados = pickle.dumps((origem, destino))
+        self.conexao.sendall(dados)
+
+    def ouvir_rede(self):
+        while True:
+            try:
+                dados = self.conexao.recv(4096)
+                if not dados:
+                    break
+                origem, destino = pickle.loads(dados)
+                self.aplicar_jogada_remota(origem, destino)
+            except Exception:
+                break
 
     def aplicar_jogada_remota(self, origem, destino):
         self.mover_peca(origem, destino)

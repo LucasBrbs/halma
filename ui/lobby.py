@@ -1,65 +1,107 @@
 import tkinter as tk
-from ui.game import HalmaGame
+from network.server import iniciar_servidor
+from network.client import conectar_servidor
+from ui.game import NetworkedHalmaGame
+import socket
+import threading
+import pickle
 
 def iniciar_lobby():
     root = tk.Tk()
     root.title("Halma - Lobby e Chat")
 
-    # Frame principal
     main_frame = tk.Frame(root)
     main_frame.pack(side=tk.LEFT)
 
-    # Chat
-    chat_frame = tk.Frame(main_frame)
-    chat_frame.pack(side=tk.TOP)
-    chat_log = tk.Text(chat_frame, height=15, width=40, state=tk.DISABLED)
-    chat_log.pack(side=tk.TOP)
-    chat_entry = tk.Entry(chat_frame, width=30)
-    chat_entry.pack(side=tk.LEFT)
-    send_button = tk.Button(chat_frame, text="Enviar")
-    send_button.pack(side=tk.LEFT)
+    conn_frame = tk.Frame(main_frame)
+    conn_frame.pack(side=tk.TOP, pady=10)
+    tk.Label(conn_frame, text="Porta:").pack(side=tk.LEFT)
+    porta_entry = tk.Entry(conn_frame, width=6)
+    porta_entry.pack(side=tk.LEFT)
+    porta_entry.insert(0, "12345")
+    tk.Label(conn_frame, text="IP:").pack(side=tk.LEFT)
+    ip_entry = tk.Entry(conn_frame, width=12)
+    ip_entry.pack(side=tk.LEFT)
+    ip_entry.insert(0, "127.0.0.1")
 
-    # Função para adicionar mensagem ao chat
-    def adicionar_mensagem_chat(msg):
-        chat_log.config(state=tk.NORMAL)
-        chat_log.insert(tk.END, msg + "\n")
-        chat_log.config(state=tk.DISABLED)
-        chat_log.see(tk.END)
+    def iniciar_jogo(conexao, is_host):
+        game_root = tk.Tk()
+        game_root.title("Halma - Jogo e Chat")
 
-    # Função para enviar mensagem de chat (adapte para enviar pela rede)
-    def enviar_mensagem_chat():
-        msg = chat_entry.get()
-        if msg:
-            adicionar_mensagem_chat("Você: " + msg)
-            # TODO: Enviar mensagem para o servidor/oponente
-            # Exemplo: network_client.enviar_mensagem_chat(msg)
-            chat_entry.delete(0, tk.END)
-    send_button.config(command=enviar_mensagem_chat)
-    chat_entry.bind("<Return>", lambda event: enviar_mensagem_chat())
+        # Frame do jogo
+        game_frame = tk.Frame(game_root)
+        game_frame.pack(side=tk.LEFT)
+        game = NetworkedHalmaGame(game_frame, conexao, is_host)
+        game.pack()
 
-    # Função para enviar jogada pela rede (adapte para enviar pela rede)
-    def enviar_jogada(origem, destino):
-        adicionar_mensagem_chat(f"Jogada enviada: {origem} -> {destino}")
-        # TODO: Enviar jogada para o servidor/oponente
-        # Exemplo: network_client.enviar_jogada(origem, destino)
+        # Frame do chat
+        chat_frame = tk.Frame(game_root)
+        chat_frame.pack(side=tk.RIGHT, padx=10)
+        chat_log = tk.Text(chat_frame, height=20, width=40, state=tk.DISABLED)
+        chat_log.pack(side=tk.TOP)
+        chat_entry = tk.Entry(chat_frame, width=30)
+        chat_entry.pack(side=tk.LEFT)
+        send_button = tk.Button(chat_frame, text="Enviar")
+        send_button.pack(side=tk.LEFT)
 
-    # Frame do jogo Halma
-    game_frame = tk.Frame(root)
-    game_frame.pack(side=tk.RIGHT)
-    halma = HalmaGame(game_frame, enviar_jogada)
-    halma.pack()
+        def adicionar_mensagem_chat(msg):
+            chat_log.config(state=tk.NORMAL)
+            chat_log.insert(tk.END, msg + "\n")
+            chat_log.config(state=tk.DISABLED)
+            chat_log.see(tk.END)
 
-    # Função para receber jogada remota (chame quando receber do servidor)
-    def receber_jogada_remota(origem, destino):
-        halma.aplicar_jogada_remota(origem, destino)
-        adicionar_mensagem_chat(f"Jogada recebida: {origem} -> {destino}")
+        def enviar_mensagem_chat():
+            msg = chat_entry.get()
+            if msg:
+                adicionar_mensagem_chat("Você: " + msg)
+                dados = pickle.dumps({"chat": msg})
+                conexao.sendall(dados)
+                chat_entry.delete(0, tk.END)
+        send_button.config(command=enviar_mensagem_chat)
+        chat_entry.bind("<Return>", lambda event: enviar_mensagem_chat())
 
-    # Função para receber mensagem de chat remota
-    def receber_mensagem_chat_remota(msg):
-        adicionar_mensagem_chat("Oponente: " + msg)
+        def ouvir_chat():
+            while True:
+                try:
+                    dados = conexao.recv(4096)
+                    if not dados:
+                        break
+                    recebido = pickle.loads(dados)
+                    if isinstance(recebido, dict) and "chat" in recebido:
+                        adicionar_mensagem_chat("Oponente: " + recebido["chat"])
+                    elif isinstance(recebido, tuple):
+                        origem, destino = recebido
+                        game.aplicar_jogada_remota(origem, destino)
+                except Exception:
+                    break
+        threading.Thread(target=ouvir_chat, daemon=True).start()
 
-    # TODO: Integre as funções acima ao seu sistema de rede:
-    # network_client.on_jogada_recebida = receber_jogada_remota
-    # network_client.on_chat_recebido = receber_mensagem_chat_remota
+        game_root.mainloop()
+
+    def hospedar():
+        porta = int(porta_entry.get())
+        servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        servidor.bind(('', porta))
+        servidor.listen(1)
+        root.destroy()
+        print(f"[Servidor] Aguardando conexão na porta {porta}...")
+        conexao, endereco = servidor.accept()
+        print(f"[Servidor] Conectado com {endereco}")
+        iniciar_jogo(conexao, True)
+
+    def entrar():
+        ip = ip_entry.get()
+        porta = int(porta_entry.get())
+        cliente = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            cliente.connect((ip, porta))
+            print(f"[Cliente] Conectado com sucesso a {ip}:{porta}")
+            root.destroy()
+            iniciar_jogo(cliente, False)
+        except Exception as e:
+            print(f"[Cliente] Erro ao conectar: {e}")
+
+    tk.Button(conn_frame, text="Hospedar", command=hospedar).pack(side=tk.LEFT, padx=5)
+    tk.Button(conn_frame, text="Entrar", command=entrar).pack(side=tk.LEFT, padx=5)
 
     root.mainloop()
