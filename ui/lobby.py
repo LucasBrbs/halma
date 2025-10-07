@@ -55,26 +55,17 @@ def iniciar_lobby():
             if msg:
                 adicionar_mensagem_chat("Você: " + msg)
                 dados = pickle.dumps({"chat": msg})
-                conexao.sendall(dados)
+                tamanho = len(dados).to_bytes(4, "big")
+                conexao.sendall(tamanho + dados)
                 chat_entry.delete(0, tk.END)
         send_button.config(command=enviar_mensagem_chat)
         chat_entry.bind("<Return>", lambda event: enviar_mensagem_chat())
 
-        def ouvir_chat():
-            while True:
-                try:
-                    dados = conexao.recv(4096)
-                    if not dados:
-                        break
-                    recebido = pickle.loads(dados)
-                    if isinstance(recebido, dict) and "chat" in recebido:
-                        adicionar_mensagem_chat("Oponente: " + recebido["chat"])
-                    elif isinstance(recebido, tuple):
-                        origem, destino = recebido
-                        game.aplicar_jogada_remota(origem, destino)
-                except Exception:
-                    break
-        threading.Thread(target=ouvir_chat, daemon=True).start()
+        # Remover a thread ouvir_chat, pois o game vai ler tudo
+        # threading.Thread(target=ouvir_chat, daemon=True).start()
+
+        # Passar função para adicionar mensagem de chat para o game
+        game.adicionar_mensagem_chat = adicionar_mensagem_chat
 
         game_root.mainloop()
 

@@ -178,15 +178,19 @@ class NetworkedHalmaGame(HalmaGame):
                     print("[DEBUG] Mensagem incompleta recebida, abortando jogada.")
                     continue
                 print(f"[DEBUG] Dados recebidos: {dados}")
-                origem, destino = pickle.loads(dados)
-                print(f"[DEBUG] Jogada recebida: origem={origem}, destino={destino}, jogador local={self.jogador}")
-                self.aplicar_jogada_remota(origem, destino)
-                # Agora passa a vez para mim
-                print(f"[DEBUG] eh_minha_vez antes = {self.eh_minha_vez}")
-                self.eh_minha_vez = True
-                self.atualizar_titulo_turno()
-                print(f"[DEBUG] eh_minha_vez depois = {self.eh_minha_vez}")
-                self.verificar_vitoria_derrota()
+                recebido = pickle.loads(dados)
+                if isinstance(recebido, dict) and "chat" in recebido:
+                    if hasattr(self, "adicionar_mensagem_chat"):
+                        self.adicionar_mensagem_chat("Oponente: " + recebido["chat"])
+                elif isinstance(recebido, tuple):
+                    origem, destino = recebido
+                    print(f"[DEBUG] Jogada recebida: origem={origem}, destino={destino}, jogador local={self.jogador}")
+                    self.aplicar_jogada_remota(origem, destino)
+                    print(f"[DEBUG] eh_minha_vez antes = {self.eh_minha_vez}")
+                    self.eh_minha_vez = True
+                    self.atualizar_titulo_turno()
+                    print(f"[DEBUG] eh_minha_vez depois = {self.eh_minha_vez}")
+                    self.verificar_vitoria_derrota()
             except Exception as e:
                 import traceback
                 print(f"[ERRO na thread de rede]: {e}")
