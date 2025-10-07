@@ -129,7 +129,9 @@ class NetworkedHalmaGame(HalmaGame):
             if self.movimento_valido(origem, destino):
                 self.mover_peca(origem, destino)
                 self.enviar_jogada_rede(origem, destino)
-                self.eh_minha_vez = False  # Passe a vez após jogar
+
+                # 🔹 Depois de jogar, sempre passa a vez
+                self.eh_minha_vez = False
                 self.atualizar_titulo_turno()
                 self.verificar_vitoria_derrota()
             else:
@@ -156,8 +158,11 @@ class NetworkedHalmaGame(HalmaGame):
                 if not dados:
                     break
                 origem, destino = pickle.loads(dados)
+
                 self.aplicar_jogada_remota(origem, destino)
-                self.eh_minha_vez = True  # Agora é a vez do jogador local
+
+                # 🔹 Após jogada do oponente, minha vez
+                self.eh_minha_vez = True
                 self.atualizar_titulo_turno()
                 self.verificar_vitoria_derrota()
             except Exception:
@@ -166,7 +171,7 @@ class NetworkedHalmaGame(HalmaGame):
     def aplicar_jogada_remota(self, origem, destino):
         self.mover_peca(origem, destino)
         self.desenhar_tabuleiro()
-        self.verificar_vitoria_derrota()
+        
 
     def verificar_vitoria_derrota(self):
         # Verifica se todas as peças do jogador estão na base adversária
