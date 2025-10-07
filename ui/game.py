@@ -159,7 +159,7 @@ class NetworkedHalmaGame(HalmaGame):
             try:
                 print("[DEBUG] Antes do recv(4)")
                 cabecalho = self.conexao.recv(4)
-                print("[DEBUG] Depois do recv(4)")
+                print(f"[DEBUG] Depois do recv(4), cabecalho={cabecalho}")
                 if not cabecalho:
                     print("[DEBUG] Conexão fechada pelo oponente.")
                     break
@@ -168,6 +168,7 @@ class NetworkedHalmaGame(HalmaGame):
                 dados = b""
                 while len(dados) < tamanho:
                     pacote = self.conexao.recv(tamanho - len(dados))
+                    print(f"[DEBUG] Pacote recebido: {pacote}")
                     if not pacote:
                         print("[DEBUG] Conexão interrompida no meio da mensagem.")
                         break
@@ -176,6 +177,7 @@ class NetworkedHalmaGame(HalmaGame):
                 if len(dados) < tamanho:
                     print("[DEBUG] Mensagem incompleta recebida, abortando jogada.")
                     continue
+                print(f"[DEBUG] Dados recebidos: {dados}")
                 origem, destino = pickle.loads(dados)
                 print(f"[DEBUG] Jogada recebida: origem={origem}, destino={destino}, jogador local={self.jogador}")
                 self.aplicar_jogada_remota(origem, destino)
@@ -186,7 +188,9 @@ class NetworkedHalmaGame(HalmaGame):
                 print(f"[DEBUG] eh_minha_vez depois = {self.eh_minha_vez}")
                 self.verificar_vitoria_derrota()
             except Exception as e:
+                import traceback
                 print(f"[ERRO na thread de rede]: {e}")
+                traceback.print_exc()
                 break
 
     def aplicar_jogada_remota(self, origem, destino):
