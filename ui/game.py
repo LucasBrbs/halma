@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import messagebox
 import threading
 import pickle
 
@@ -107,7 +108,7 @@ class NetworkedHalmaGame(HalmaGame):
 
     def on_click(self, event):
         if self.turno != self.jogador:
-            tk.messagebox.showinfo("Turno", "Aguarde o turno do oponente!")
+            messagebox.showinfo("Turno", "Aguarde o turno do oponente!")
             return
         linha = event.y // TAMANHO_CASA
         coluna = event.x // TAMANHO_CASA
@@ -119,7 +120,7 @@ class NetworkedHalmaGame(HalmaGame):
             if self.tabuleiro[origem[0]][origem[1]] != self.jogador:
                 self.selecionado = None
                 self.desenhar_tabuleiro()
-                tk.messagebox.showinfo("Movimento inválido", "Selecione uma peça da sua cor!")
+                messagebox.showinfo("Movimento inválido", "Selecione uma peça da sua cor!")
                 return
             if self.movimento_valido(origem, destino):
                 self.mover_peca(origem, destino)
@@ -127,14 +128,14 @@ class NetworkedHalmaGame(HalmaGame):
                 self.turno = 'B' if self.turno == 'A' else 'A'  # Alterna turno só localmente
                 self.atualizar_titulo_turno()
             else:
-                tk.messagebox.showinfo("Movimento inválido", "Movimento não permitido!")
+                messagebox.showinfo("Movimento inválido", "Movimento não permitido!")
             self.selecionado = None
             self.desenhar_tabuleiro()
         elif self.tabuleiro[linha][coluna] == self.jogador:
             self.selecionado = (linha, coluna)
             self.desenhar_tabuleiro()
         elif self.tabuleiro[linha][coluna]:
-            tk.messagebox.showinfo("Movimento inválido", "Selecione apenas suas peças!")
+            messagebox.showinfo("Movimento inválido", "Selecione apenas suas peças!")
 
     def enviar_jogada_rede(self, origem, destino):
         dados = pickle.dumps((origem, destino))
