@@ -90,13 +90,18 @@ class HalmaGame(tk.Frame):
 
 class NetworkedHalmaGame(HalmaGame):
     def __init__(self, master, conexao, is_host):
+        print("[DEBUG] Entrou no construtor NetworkedHalmaGame")
+        print(f"[DEBUG] conexao = {conexao}")
+        print(f"[DEBUG] is_host = {is_host}")
         super().__init__(master, self.enviar_jogada_rede)
         self.conexao = conexao
         self.is_host = is_host
         self.jogador = 'A' if is_host else 'B'
         self.eh_minha_vez = is_host  # Host (A / Azul) sempre começa
         self.atualizar_titulo_turno()
+        print("[DEBUG] Antes de iniciar thread ouvir_rede")
         threading.Thread(target=self.ouvir_rede, daemon=True).start()
+        print("[DEBUG] Depois de iniciar thread ouvir_rede")
 
     def atualizar_titulo_turno(self):
         if self.eh_minha_vez:
@@ -147,7 +152,9 @@ class NetworkedHalmaGame(HalmaGame):
         print("[DEBUG] Thread de rede iniciada")
         while True:
             try:
+                print("[DEBUG] Antes do recv(4)")
                 cabecalho = self.conexao.recv(4)
+                print("[DEBUG] Depois do recv(4)")
                 if not cabecalho:
                     print("[DEBUG] Conexão fechada pelo oponente.")
                     break
