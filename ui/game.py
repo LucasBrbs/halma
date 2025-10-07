@@ -160,6 +160,7 @@ class NetworkedHalmaGame(HalmaGame):
                     print("[DEBUG] Conexão fechada pelo oponente.")
                     break
                 tamanho = int.from_bytes(cabecalho, "big")
+                print(f"[DEBUG] Cabeçalho recebido: tamanho esperado = {tamanho} bytes")
 
                 # 🔹 Agora lê a mensagem completa
                 dados = b""
@@ -169,10 +170,15 @@ class NetworkedHalmaGame(HalmaGame):
                         print("[DEBUG] Conexão interrompida no meio da mensagem.")
                         break
                     dados += pacote
+                    print(f"[DEBUG] Recebendo pacote... {len(dados)}/{tamanho} bytes")
+
+                if len(dados) < tamanho:
+                    print("[DEBUG] Mensagem incompleta recebida, abortando jogada.")
+                    continue
 
                 # 🔹 Desserializa a jogada
                 origem, destino = pickle.loads(dados)
-                print(f"[DEBUG] Recebi jogada remota: origem={origem}, destino={destino}, jogador local={self.jogador}")
+                print(f"[DEBUG] Jogada recebida: origem={origem}, destino={destino}, jogador local={self.jogador}")
 
                 # 🔹 Aplica a jogada recebida no tabuleiro
                 self.aplicar_jogada_remota(origem, destino)
@@ -189,6 +195,7 @@ class NetworkedHalmaGame(HalmaGame):
             except Exception as e:
                 print(f"[ERRO na thread de rede]: {e}")
                 break
+
 
 
     def aplicar_jogada_remota(self, origem, destino):
