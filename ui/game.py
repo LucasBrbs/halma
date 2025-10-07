@@ -92,18 +92,22 @@ class NetworkedHalmaGame(HalmaGame):
         super().__init__(master, self.enviar_jogada_rede)
         self.conexao = conexao
         self.is_host = is_host
-        self.turno = 'A' if is_host else 'B'
         self.jogador = 'A' if is_host else 'B'
+        self.turno = 'A'  # Sempre começa com Azul
         self.atualizar_titulo_turno()
         threading.Thread(target=self.ouvir_rede, daemon=True).start()
 
     def atualizar_titulo_turno(self):
-        jogador_nome = 'Azul' if self.turno == 'A' else 'Vermelho'
-        self.master.master.title(f"Halma - Vez de {jogador_nome}")
+        if self.turno == self.jogador:
+            nome = 'Azul' if self.jogador == 'A' else 'Vermelho'
+            self.master.master.title(f"Halma - Seu turno ({nome})")
+        else:
+            nome = 'Azul' if self.jogador == 'B' else 'Vermelho'
+            self.master.master.title(f"Halma - Turno do oponente ({nome})")
 
     def on_click(self, event):
         if self.turno != self.jogador:
-            tk.messagebox.showinfo("Turno", "Aguarde sua vez!")
+            tk.messagebox.showinfo("Turno", "Aguarde o turno do oponente!")
             return
         linha = event.y // TAMANHO_CASA
         coluna = event.x // TAMANHO_CASA
@@ -120,7 +124,7 @@ class NetworkedHalmaGame(HalmaGame):
             if self.movimento_valido(origem, destino):
                 self.mover_peca(origem, destino)
                 self.enviar_jogada_rede(origem, destino)
-                self.turno = 'B' if self.turno == 'A' else 'A'
+                self.turno = 'B' if self.turno == 'A' else 'A'  # Alterna turno só localmente
                 self.atualizar_titulo_turno()
             else:
                 tk.messagebox.showinfo("Movimento inválido", "Movimento não permitido!")
@@ -135,6 +139,7 @@ class NetworkedHalmaGame(HalmaGame):
     def enviar_jogada_rede(self, origem, destino):
         dados = pickle.dumps((origem, destino))
         self.conexao.sendall(dados)
+        # Não alterna turno aqui!
 
     def ouvir_rede(self):
         while True:
@@ -144,7 +149,7 @@ class NetworkedHalmaGame(HalmaGame):
                     break
                 origem, destino = pickle.loads(dados)
                 self.aplicar_jogada_remota(origem, destino)
-                self.turno = 'B' if self.turno == 'A' else 'A'
+                self.turno = self.jogador  # Sempre passa a vez para o jogador local após receber
                 self.atualizar_titulo_turno()
             except Exception:
                 break
