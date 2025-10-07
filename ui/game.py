@@ -100,11 +100,10 @@ class NetworkedHalmaGame(HalmaGame):
 
     def atualizar_titulo_turno(self):
         if self.eh_minha_vez:
-            nome = 'Azul' if self.jogador == 'A' else 'Vermelho'
-            self.master.master.title(f"Halma - Seu turno ({nome})")
+            self.master.master.title(f"Halma - Seu turno ({'Azul' if self.jogador == 'A' else 'Vermelho'})")
         else:
-            nome = 'Azul' if self.jogador == 'B' else 'Vermelho'
-            self.master.master.title(f"Halma - Turno do oponente ({nome})")
+            self.master.master.title("Halma - Turno do oponente")
+
 
     def on_click(self, event):
         if not self.eh_minha_vez:
