@@ -94,12 +94,12 @@ class NetworkedHalmaGame(HalmaGame):
         self.conexao = conexao
         self.is_host = is_host
         self.jogador = 'A' if is_host else 'B'
-        self.turno = 'A'  # Sempre começa com Azul
+        self.eh_minha_vez = is_host  # Host (A / Azul) sempre começa
         self.atualizar_titulo_turno()
         threading.Thread(target=self.ouvir_rede, daemon=True).start()
 
     def atualizar_titulo_turno(self):
-        if self.turno == self.jogador:
+        if self.eh_minha_vez:
             nome = 'Azul' if self.jogador == 'A' else 'Vermelho'
             self.master.master.title(f"Halma - Seu turno ({nome})")
         else:
@@ -107,42 +107,47 @@ class NetworkedHalmaGame(HalmaGame):
             self.master.master.title(f"Halma - Turno do oponente ({nome})")
 
     def on_click(self, event):
-        if self.turno != self.jogador:
+        if not self.eh_minha_vez:
             messagebox.showinfo("Turno", "Aguarde o turno do oponente!")
             return
+
         linha = event.y // TAMANHO_CASA
         coluna = event.x // TAMANHO_CASA
         if linha < 0 or linha >= TAMANHO_TABULEIRO or coluna < 0 or coluna >= TAMANHO_TABULEIRO:
             return
+
         if self.selecionado:
             origem = self.selecionado
             destino = (linha, coluna)
+
             if self.tabuleiro[origem[0]][origem[1]] != self.jogador:
                 self.selecionado = None
                 self.desenhar_tabuleiro()
                 messagebox.showinfo("Movimento inválido", "Selecione uma peça da sua cor!")
                 return
+
             if self.movimento_valido(origem, destino):
                 self.mover_peca(origem, destino)
                 self.enviar_jogada_rede(origem, destino)
-                # Alterna turno para o oponente após jogar
-                self.turno = 'A' if self.jogador == 'B' else 'B'
+                self.eh_minha_vez = False  # Passe a vez após jogar
                 self.atualizar_titulo_turno()
                 self.verificar_vitoria_derrota()
             else:
                 messagebox.showinfo("Movimento inválido", "Movimento não permitido!")
+
             self.selecionado = None
             self.desenhar_tabuleiro()
+
         elif self.tabuleiro[linha][coluna] == self.jogador:
             self.selecionado = (linha, coluna)
             self.desenhar_tabuleiro()
+
         elif self.tabuleiro[linha][coluna]:
             messagebox.showinfo("Movimento inválido", "Selecione apenas suas peças!")
 
     def enviar_jogada_rede(self, origem, destino):
         dados = pickle.dumps((origem, destino))
         self.conexao.sendall(dados)
-        # Não alterna turno aqui!
 
     def ouvir_rede(self):
         while True:
@@ -152,8 +157,7 @@ class NetworkedHalmaGame(HalmaGame):
                     break
                 origem, destino = pickle.loads(dados)
                 self.aplicar_jogada_remota(origem, destino)
-                # Ao receber jogada, passa o turno para o jogador local
-                self.turno = self.jogador
+                self.eh_minha_vez = True  # Agora é a vez do jogador local
                 self.atualizar_titulo_turno()
                 self.verificar_vitoria_derrota()
             except Exception:
@@ -179,6 +183,7 @@ class NetworkedHalmaGame(HalmaGame):
                         if self.tabuleiro[i][j] != 'B':
                             return False
                 return True
+
         if todas_na_base(self.jogador):
             messagebox.showinfo("Vitória!", "Parabéns, você venceu!")
         elif todas_na_base('A' if self.jogador == 'B' else 'B'):
