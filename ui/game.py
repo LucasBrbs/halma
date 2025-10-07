@@ -150,12 +150,34 @@ class NetworkedHalmaGame(HalmaGame):
                     break
                 origem, destino = pickle.loads(dados)
                 self.aplicar_jogada_remota(origem, destino)
-                # Alterna turno para o jogador local
-                self.turno = self.jogador
+                # Alterna turno para o oponente
+                self.turno = 'A' if self.jogador == 'B' else 'B'
                 self.atualizar_titulo_turno()
+                self.verificar_vitoria_derrota()
             except Exception:
                 break
 
     def aplicar_jogada_remota(self, origem, destino):
         self.mover_peca(origem, destino)
         self.desenhar_tabuleiro()
+        self.verificar_vitoria_derrota()
+
+    def verificar_vitoria_derrota(self):
+        # Verifica se todas as peças do jogador estão na base adversária
+        def todas_na_base(jogador):
+            if jogador == 'A':
+                for i in range(4):
+                    for j in range(4 - i):
+                        if self.tabuleiro[TAMANHO_TABULEIRO-1-i][TAMANHO_TABULEIRO-1-j] != 'A':
+                            return False
+                return True
+            else:
+                for i in range(4):
+                    for j in range(4 - i):
+                        if self.tabuleiro[i][j] != 'B':
+                            return False
+                return True
+        if todas_na_base(self.jogador):
+            messagebox.showinfo("Vitória!", "Parabéns, você venceu!")
+        elif todas_na_base('A' if self.jogador == 'B' else 'B'):
+            messagebox.showinfo("Derrota", "O oponente venceu!")
