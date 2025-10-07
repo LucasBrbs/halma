@@ -170,27 +170,21 @@ class NetworkedHalmaGame(HalmaGame):
         print("[DEBUG] Thread de rede iniciada")
         while True:
             try:
-                print("[DEBUG] Antes do recv(4)")
                 cabecalho = self.conexao.recv(4)
-                print(f"[DEBUG] Depois do recv(4), cabecalho={cabecalho}")
                 if not cabecalho:
                     print("[DEBUG] Conexão fechada pelo oponente.")
                     break
                 tamanho = int.from_bytes(cabecalho, "big")
-                print(f"[DEBUG] Cabeçalho recebido: tamanho esperado = {tamanho} bytes")
                 dados = b""
                 while len(dados) < tamanho:
                     pacote = self.conexao.recv(tamanho - len(dados))
-                    print(f"[DEBUG] Pacote recebido: {pacote}")
                     if not pacote:
                         print("[DEBUG] Conexão interrompida no meio da mensagem.")
                         break
                     dados += pacote
-                    print(f"[DEBUG] Recebendo pacote... {len(dados)}/{tamanho} bytes")
                 if len(dados) < tamanho:
                     print("[DEBUG] Mensagem incompleta recebida, abortando jogada.")
                     continue
-                print(f"[DEBUG] Dados recebidos: {dados}")
                 recebido = pickle.loads(dados)
                 if isinstance(recebido, dict) and "chat" in recebido:
                     if hasattr(self, "adicionar_mensagem_chat"):
@@ -201,12 +195,9 @@ class NetworkedHalmaGame(HalmaGame):
                     break
                 elif isinstance(recebido, tuple):
                     origem, destino = recebido
-                    print(f"[DEBUG] Jogada recebida: origem={origem}, destino={destino}, jogador local={self.jogador}")
                     self.aplicar_jogada_remota(origem, destino)
-                    print(f"[DEBUG] eh_minha_vez antes = {self.eh_minha_vez}")
                     self.eh_minha_vez = True
                     self.atualizar_titulo_turno()
-                    print(f"[DEBUG] eh_minha_vez depois = {self.eh_minha_vez}")
                     self.verificar_vitoria_derrota()
             except Exception as e:
                 import traceback
