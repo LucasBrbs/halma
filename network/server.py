@@ -1,6 +1,5 @@
 # Responsável por hospedar o servidor e aceitar conexão de um cliente
 import socket
-from ui.game import GameUI
 
 def iniciar_servidor(porta):
     servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -10,4 +9,4 @@ def iniciar_servidor(porta):
 
     conexao, endereco = servidor.accept()
     print(f"[Servidor] Conectado com {endereco}")
-    GameUI(conexao, is_host=True)
+    # GameUI(conexao, is_host=True) # Removido GameUI(conexao, is_host=True) pois a interface agora é chamada pelo lobby
