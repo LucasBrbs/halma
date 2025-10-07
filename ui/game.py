@@ -144,9 +144,14 @@ class NetworkedHalmaGame(HalmaGame):
             messagebox.showinfo("Movimento inválido", "Selecione apenas suas peças!")
 
     def enviar_jogada_rede(self, origem, destino):
-        dados = pickle.dumps((origem, destino))
-        tamanho = len(dados).to_bytes(4, "big")  # prefixo com tamanho
-        self.conexao.sendall(tamanho + dados)
+        print(f"[DEBUG] Enviando jogada: origem={origem}, destino={destino}, jogador local={self.jogador}")
+        try:
+            dados = pickle.dumps((origem, destino))
+            tamanho = len(dados).to_bytes(4, "big")  # prefixo com tamanho
+            self.conexao.sendall(tamanho + dados)
+            print("[DEBUG] Jogada enviada com sucesso!")
+        except Exception as e:
+            print(f"[ERRO ao enviar jogada]: {e}")
 
     def ouvir_rede(self):
         print("[DEBUG] Thread de rede iniciada")
