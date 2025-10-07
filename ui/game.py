@@ -154,30 +154,42 @@ class NetworkedHalmaGame(HalmaGame):
     def ouvir_rede(self):
         while True:
             try:
-                # Lê o tamanho da mensagem
+                # 🔹 Primeiro lê o cabeçalho (4 bytes = tamanho da mensagem)
                 cabecalho = self.conexao.recv(4)
                 if not cabecalho:
+                    print("[DEBUG] Conexão fechada pelo oponente.")
                     break
                 tamanho = int.from_bytes(cabecalho, "big")
 
-                # Lê os dados completos
+                # 🔹 Agora lê a mensagem completa
                 dados = b""
                 while len(dados) < tamanho:
                     pacote = self.conexao.recv(tamanho - len(dados))
                     if not pacote:
+                        print("[DEBUG] Conexão interrompida no meio da mensagem.")
                         break
                     dados += pacote
 
+                # 🔹 Desserializa a jogada
                 origem, destino = pickle.loads(dados)
+                print(f"[DEBUG] Recebi jogada remota: origem={origem}, destino={destino}, jogador local={self.jogador}")
+
+                # 🔹 Aplica a jogada recebida no tabuleiro
                 self.aplicar_jogada_remota(origem, destino)
 
-                # 🔹 Após jogada do oponente, minha vez
+                # 🔹 Agora passa a vez para mim
+                print(f"[DEBUG] eh_minha_vez antes = {self.eh_minha_vez}")
                 self.eh_minha_vez = True
                 self.atualizar_titulo_turno()
+                print(f"[DEBUG] eh_minha_vez depois = {self.eh_minha_vez}")
+
+                # 🔹 Verifica condição de vitória/derrota
                 self.verificar_vitoria_derrota()
+
             except Exception as e:
                 print(f"[ERRO na thread de rede]: {e}")
                 break
+
 
     def aplicar_jogada_remota(self, origem, destino):
         self.mover_peca(origem, destino)
