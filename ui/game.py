@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox
 import threading
-import pickle
+import time
 
 TAMANHO_TABULEIRO = 16
 TAMANHO_CASA = 30
@@ -89,21 +89,21 @@ class HalmaGame(tk.Frame):
         self.tabuleiro[oi][oj] = None
 
 class NetworkedHalmaGame(HalmaGame):
-    def __init__(self, master, conexao, is_host):
+    def __init__(self, master, cliente_rmi):
         print("[DEBUG] Entrou no construtor NetworkedHalmaGame")
-        print(f"[DEBUG] conexao = {conexao}")
-        print(f"[DEBUG] is_host = {is_host}")
+        print(f"[DEBUG] cliente_rmi = {cliente_rmi}")
+        print(f"[DEBUG] is_host = {cliente_rmi.is_host}")
         super().__init__(master, self.enviar_jogada_rede)
         self.desistido = False
-        self.conexao = conexao
-        self.is_host = is_host
-        self.jogador = 'A' if is_host else 'B'
-        self.eh_minha_vez = is_host
+        self.cliente_rmi = cliente_rmi
+        self.is_host = cliente_rmi.is_host
+        self.jogador = 'A' if self.is_host else 'B'
+        self.eh_minha_vez = self.is_host
         self.atualizar_titulo_turno()
         print("[DEBUG] Antes de iniciar thread ouvir_rede")
         threading.Thread(target=self.ouvir_rede, daemon=True).start()
         print("[DEBUG] Depois de iniciar thread ouvir_rede")
-        # Botão de desistência
+        # Botao de desistencia
         btn_desistir = tk.Button(self.master, text="Desistir", command=self.desistir)
         btn_desistir.pack(side=tk.BOTTOM, pady=10)
 
@@ -150,55 +150,50 @@ class NetworkedHalmaGame(HalmaGame):
     def enviar_jogada_rede(self, origem, destino):
         print(f"[DEBUG] Enviando jogada: origem={origem}, destino={destino}, jogador local={self.jogador}")
         try:
-            dados = pickle.dumps((origem, destino))
-            tamanho = len(dados).to_bytes(4, "big")  # prefixo com tamanho
-            self.conexao.sendall(tamanho + dados)
-            print("[DEBUG] Jogada enviada com sucesso!")
+            # Usa RMI para enviar a jogada ao servidor
+            resultado = self.cliente_rmi.enviar_jogada(origem, destino)
+            if resultado:
+                print("[DEBUG] Jogada enviada com sucesso!")
+            else:
+                print("[DEBUG] Falha ao enviar jogada")
         except Exception as e:
             print(f"[ERRO ao enviar jogada]: {e}")
 
     def desistir(self):
         if not self.desistido:
             self.desistido = True
-            dados = pickle.dumps({"desistir": True})
-            tamanho = len(dados).to_bytes(4, "big")
-            self.conexao.sendall(tamanho + dados)
-            messagebox.showinfo("Desistência", "Você desistiu do jogo.")
+            # Usa RMI para informar desistencia ao servidor
+            self.cliente_rmi.desistir_jogo()
+            messagebox.showinfo("Desistencia", "Voce desistiu do jogo.")
             self.master.master.destroy()
 
     def ouvir_rede(self):
         print("[DEBUG] Thread de rede iniciada")
-        while True:
+        while not self.desistido:
             try:
-                cabecalho = self.conexao.recv(4)
-                if not cabecalho:
-                    print("[DEBUG] Conexão fechada pelo oponente.")
-                    break
-                tamanho = int.from_bytes(cabecalho, "big")
-                dados = b""
-                while len(dados) < tamanho:
-                    pacote = self.conexao.recv(tamanho - len(dados))
-                    if not pacote:
-                        print("[DEBUG] Conexão interrompida no meio da mensagem.")
-                        break
-                    dados += pacote
-                if len(dados) < tamanho:
-                    print("[DEBUG] Mensagem incompleta recebida, abortando jogada.")
-                    continue
-                recebido = pickle.loads(dados)
-                if isinstance(recebido, dict) and "chat" in recebido:
-                    if hasattr(self, "adicionar_mensagem_chat"):
-                        self.adicionar_mensagem_chat("Oponente: " + recebido["chat"])
-                elif isinstance(recebido, dict) and "desistir" in recebido:
-                    messagebox.showinfo("Desistência", "O oponente desistiu do jogo.")
-                    self.master.master.destroy()
-                    break
-                elif isinstance(recebido, tuple):
-                    origem, destino = recebido
+                # Verifica se recebeu uma jogada do oponente
+                jogada = self.cliente_rmi.obter_jogada()
+                if jogada:
+                    origem, destino = jogada
                     self.aplicar_jogada_remota(origem, destino)
                     self.eh_minha_vez = True
                     self.atualizar_titulo_turno()
                     self.verificar_vitoria_derrota()
+                
+                # Verifica se recebeu mensagem de chat
+                mensagem = self.cliente_rmi.obter_mensagem_chat()
+                if mensagem and hasattr(self, "adicionar_mensagem_chat"):
+                    self.adicionar_mensagem_chat("Oponente: " + mensagem)
+                
+                # Verifica se o oponente desistiu
+                if self.cliente_rmi.verificar_desistencia():
+                    messagebox.showinfo("Desistencia", "O oponente desistiu do jogo.")
+                    self.master.master.destroy()
+                    break
+                
+                # Pequena pausa para nao sobrecarregar o servidor
+                time.sleep(0.1)
+                
             except Exception as e:
                 import traceback
                 print(f"[ERRO na thread de rede]: {e}")
