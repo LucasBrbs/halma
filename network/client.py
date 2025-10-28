@@ -9,11 +9,44 @@ class ClienteRMI:
         self.conexao = None
         self.player_id = None
         self.is_host = False
+        self.servidor_local = None
     
-    def conectar_servidor(self, ip, porta=PORTA_PADRAO):
+    def conectar_servidor(self, ip, porta=PORTA_PADRAO, como_host=False):
         # Conecta ao servidor RMI
         # ip: endereco do servidor (ex: '127.0.0.1')  
         # porta: numero da porta (ex: 18861)
+        # como_host: se True, inicia servidor local primeiro
+        
+        if como_host:
+            return self._conectar_como_host(porta)
+        else:
+            return self._conectar_como_cliente(ip, porta)
+    
+    def _conectar_como_host(self, porta):
+        # Inicia servidor local e se conecta como host
+        from network.server import iniciar_servidor
+        import time
+        
+        try:
+            print(f"[Cliente RMI] Iniciando servidor local na porta {porta}...")
+            self.servidor_local = iniciar_servidor(porta)
+            if not self.servidor_local:
+                print("[Cliente RMI] Erro ao iniciar servidor local")
+                return None
+            
+            # Aguarda um momento para o servidor inicializar
+            time.sleep(0.5)
+            
+            # Se conecta ao proprio servidor
+            print(f"[Cliente RMI] Conectando ao servidor local...")
+            return self._conectar_como_cliente('127.0.0.1', porta)
+            
+        except Exception as e:
+            print(f"[Cliente RMI] Erro ao conectar como host: {e}")
+            return None
+    
+    def _conectar_como_cliente(self, ip, porta):
+        # Conecta a um servidor existente
         try:
             print(f"[Cliente RMI] Tentando conectar a {ip}:{porta}...")
             # Estabelece conexao RMI com timeout
@@ -33,7 +66,7 @@ class ClienteRMI:
             return None
     
     def desconectar(self):
-        # Fecha a conexao RMI
+        # Fecha a conexao RMI e para o servidor local se necessario
         if self.conexao:
             try:
                 self.conexao.close()
@@ -42,6 +75,16 @@ class ClienteRMI:
                 print(f"[Cliente RMI] Erro ao desconectar: {e}")
             finally:
                 self.conexao = None
+        
+        # Para o servidor local se este cliente for o host
+        if self.servidor_local:
+            try:
+                from network.server import parar_servidor
+                parar_servidor()
+                self.servidor_local = None
+                print("[Cliente RMI] Servidor local parado")
+            except Exception as e:
+                print(f"[Cliente RMI] Erro ao parar servidor local: {e}")
     
     def enviar_jogada(self, origem, destino):
         # Envia uma jogada para o servidor
@@ -120,10 +163,11 @@ class ClienteRMI:
             return False
 
 # Funcao de compatibilidade com o codigo antigo
-def conectar_servidor(ip, porta=PORTA_PADRAO):
+def conectar_servidor(ip, porta=PORTA_PADRAO, como_host=False):
     # Cria um cliente RMI e conecta ao servidor
+    # como_host: se True, inicia servidor local e se conecta como host
     cliente = ClienteRMI()
-    conexao = cliente.conectar_servidor(ip, porta)
+    conexao = cliente.conectar_servidor(ip, porta, como_host)
     if conexao:
         return cliente
     return None

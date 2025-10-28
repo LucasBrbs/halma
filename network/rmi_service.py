@@ -17,18 +17,14 @@ class HalmaGameService(rpyc.Service):
     conexao_para_id = {}       # mapeamento reverso conexao -> id
     lock = threading.Lock()    # sincronizacao de threads
     
+    def __init__(self):
+        self.conexao_atual = None
+    
     def on_connect(self, conn):
         # Chamado quando um cliente se conecta
         print(f"[Servidor RMI] Cliente conectado: {conn}")
-        with HalmaGameService.lock:
-            player_id = HalmaGameService.proximo_id
-            HalmaGameService.proximo_id += 1
-            HalmaGameService.jogadores_conectados[player_id] = conn
-            HalmaGameService.conexao_para_id[conn] = player_id
-            HalmaGameService.jogadas_pendentes[player_id] = []
-            HalmaGameService.mensagens_chat[player_id] = []
-            HalmaGameService.jogador_desistiu[player_id] = False
-        print(f"[Servidor RMI] Jogador {player_id} configurado como {'host' if player_id == 1 else 'cliente'}")
+        self.conexao_atual = conn
+        # Nao registra automaticamente - aguarda chamada explicita
     
     def on_disconnect(self, conn):
         # Chamado quando um cliente se desconecta
@@ -41,12 +37,27 @@ class HalmaGameService(rpyc.Service):
     
     def exposed_registrar_jogador(self):
         # Registra um novo jogador e retorna seu ID e status de host
-        # Retorna o proximo ID disponivel
+        conn = self.conexao_atual
         with HalmaGameService.lock:
+            # Verifica se ja esta registrado
+            if conn in HalmaGameService.conexao_para_id:
+                player_id = HalmaGameService.conexao_para_id[conn]
+                is_host = (player_id == 1)
+                print(f"[Servidor RMI] Jogador {player_id} ja registrado")
+                return player_id, is_host
+            
             # Encontra um ID disponivel (1 ou 2)
             player_id = 1 if 1 not in HalmaGameService.jogadores_conectados else 2
             is_host = (player_id == 1)
-            print(f"[Servidor RMI] Jogador {player_id} registrado")
+            
+            # Registra o jogador nas estruturas de dados
+            HalmaGameService.jogadores_conectados[player_id] = conn
+            HalmaGameService.conexao_para_id[conn] = player_id
+            HalmaGameService.jogadas_pendentes[player_id] = []
+            HalmaGameService.mensagens_chat[player_id] = []
+            HalmaGameService.jogador_desistiu[player_id] = False
+            
+            print(f"[Servidor RMI] Jogador {player_id} registrado como {'host' if is_host else 'cliente'}")
             return player_id, is_host
     
     def exposed_enviar_jogada(self, player_id, origem, destino):
