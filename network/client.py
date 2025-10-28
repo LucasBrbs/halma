@@ -49,7 +49,7 @@ class ClienteRMI:
             print("[Cliente RMI] Erro: Nao conectado ao servidor")
             return False
         try:
-            resultado = self.conexao.root.enviar_jogada(origem, destino)
+            resultado = self.conexao.root.enviar_jogada(self.player_id, origem, destino)
             print(f"[Cliente RMI] Jogada enviada: {origem} -> {destino}")
             return resultado
         except Exception as e:
@@ -61,7 +61,7 @@ class ClienteRMI:
         if not self.conexao:
             return None
         try:
-            jogada = self.conexao.root.obter_jogada()
+            jogada = self.conexao.root.obter_jogada(self.player_id)
             if jogada:
                 print(f"[Cliente RMI] Jogada recebida: {jogada}")
             return jogada
@@ -74,7 +74,7 @@ class ClienteRMI:
         if not self.conexao:
             return False
         try:
-            resultado = self.conexao.root.enviar_mensagem_chat(mensagem)
+            resultado = self.conexao.root.enviar_mensagem_chat(self.player_id, mensagem)
             print(f"[Cliente RMI] Mensagem de chat enviada: {mensagem}")
             return resultado
         except Exception as e:
@@ -86,7 +86,7 @@ class ClienteRMI:
         if not self.conexao:
             return None
         try:
-            mensagem = self.conexao.root.obter_mensagem_chat()
+            mensagem = self.conexao.root.obter_mensagem_chat(self.player_id)
             if mensagem:
                 print(f"[Cliente RMI] Mensagem de chat recebida: {mensagem}")
             return mensagem
@@ -99,7 +99,7 @@ class ClienteRMI:
         if not self.conexao:
             return False
         try:
-            resultado = self.conexao.root.desistir_jogo()
+            resultado = self.conexao.root.desistir_jogo(self.player_id)
             print("[Cliente RMI] Desistencia enviada ao servidor")
             return resultado
         except Exception as e:
@@ -111,7 +111,7 @@ class ClienteRMI:
         if not self.conexao:
             return False
         try:
-            desistiu = self.conexao.root.verificar_desistencia()
+            desistiu = self.conexao.root.verificar_desistencia(self.player_id)
             if desistiu:
                 print("[Cliente RMI] Oponente desistiu do jogo")
             return desistiu
